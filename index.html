@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121726">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hinário">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Hinário — Demo</title>
+<style>
+:root{
+  --bg:#121726; --bg2:#1a2032; --card:#1e2538; --card2:#252d43; --line:#2c3550;
+  --text:#eef0f6; --muted:#8a93ab; --gold:#e8b44a; --gold2:#f5d27e; --goldbg:rgba(232,180,74,.14);
+  --radius:16px; --ease:cubic-bezier(.22,.9,.3,1); --fs:19px;
+}
+html[data-theme="light"]{
+  --bg:#f6f3ec; --bg2:#ffffff; --card:#ffffff; --card2:#f3eee3; --line:#e6dfcf;
+  --text:#1d2233; --muted:#6e7387; --gold:#b9821c; --gold2:#d39b2e; --goldbg:rgba(185,130,28,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior-y:none;transition:background .4s,color .4s}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+.app{max-width:560px;margin:0 auto;min-height:100%;position:relative}
+
+/* ---------- Splash / descarga offline ---------- */
+#splash{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:22px;transition:opacity .6s var(--ease),visibility .6s}
+#splash.hide{opacity:0;visibility:hidden}
+.logo{width:92px;height:92px;border-radius:26px;display:grid;place-items:center;
+  background:radial-gradient(circle at 30% 25%,var(--gold2),var(--gold) 55%,#9a6a14);
+  box-shadow:0 12px 40px rgba(232,180,74,.35);animation:pop .8s var(--ease) backwards,float 4s ease-in-out .8s infinite}
+.logo svg{width:52px;height:52px}
+.splash-t{font-size:26px;font-weight:700;letter-spacing:.3px;animation:up .7s .2s var(--ease) backwards}
+.splash-s{color:var(--muted);font-size:14px;animation:up .7s .35s var(--ease) backwards}
+.bar{width:220px;height:6px;border-radius:9px;background:var(--card);overflow:hidden;animation:up .7s .45s var(--ease) backwards}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--gold2));border-radius:9px;transition:width .12s linear}
+@keyframes pop{from{transform:scale(.4);opacity:0}}
+@keyframes float{50%{transform:translateY(-6px)}}
+@keyframes up{from{transform:translateY(14px);opacity:0}}
+
+/* ---------- Header ---------- */
+header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:calc(env(safe-area-inset-top) + 14px) 18px 10px;
+  transition:padding .35s var(--ease),box-shadow .35s}
+header.small{padding-top:calc(env(safe-area-inset-top) + 8px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.top{display:flex;align-items:center;gap:10px}
+.top h1{margin:0;font-size:25px;font-weight:750;flex:1;transition:font-size .35s var(--ease)}
+header.small .top h1{font-size:20px}
+.icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;transition:background .25s,transform .2s}
+.icon-btn:hover{background:var(--card)}
+.icon-btn:active{transform:scale(.88)}
+.icon-btn svg{width:22px;height:22px}
+.search{margin-top:12px;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;padding:0 14px;height:48px;transition:border-color .25s,box-shadow .25s}
+.search:focus-within{border-color:var(--gold);box-shadow:0 0 0 4px var(--goldbg)}
+.search svg{width:20px;height:20px;color:var(--muted);flex:none}
+.search input{flex:1;background:none;border:0;outline:0;color:var(--text);font-size:16px}
+.search input::-webkit-search-cancel-button{display:none}
+.search input::placeholder{color:var(--muted)}
+#clear{opacity:0;pointer-events:none;transition:opacity .2s}
+#clear.on{opacity:1;pointer-events:auto}
+
+/* tabs con indicador deslizante */
+.tabs{position:relative;display:flex;margin-top:12px;background:var(--card);border-radius:12px;padding:4px}
+.tabs button{flex:1;position:relative;z-index:1;height:36px;font-size:14px;font-weight:600;color:var(--muted);transition:color .3s}
+.tabs button.on{color:#1b1406}
+.tabs .ind{position:absolute;top:4px;bottom:4px;left:4px;border-radius:9px;background:linear-gradient(135deg,var(--gold2),var(--gold));
+  transition:transform .45s var(--ease),width .45s var(--ease);box-shadow:0 4px 14px rgba(232,180,74,.35)}
+
+/* ---------- Lista ---------- */
+main{padding:6px 44px 120px 18px}
+.sec{display:flex;align-items:center;gap:12px;margin:20px 0 10px}
+.sec b{min-width:32px;height:32px;padding:0 6px;border-radius:9px;background:var(--gold);color:#1b1406;display:grid;place-items:center;font-size:15px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.item{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);border-radius:var(--radius);
+  padding:14px 12px 14px 14px;margin-bottom:10px;position:relative;overflow:hidden;
+  transition:transform .3s var(--ease),background .3s,box-shadow .3s}
+.item.rv{opacity:0;transform:translateY(16px)}
+.item.in{opacity:1;transform:none;transition:opacity .5s var(--ease),transform .5s var(--ease),background .3s,box-shadow .3s}
+.item:hover{background:var(--card2);box-shadow:0 8px 22px rgba(0,0,0,.18)}
+.item:active{transform:scale(.98)}
+.num{flex:none;width:44px;height:44px;border-radius:12px;background:var(--goldbg);color:var(--gold);display:grid;place-items:center;font-weight:750;font-size:15px}
+.meta{flex:1;min-width:0}
+.meta .t{font-size:16.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta .s{font-size:13px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta mark{background:var(--goldbg);color:var(--gold);border-radius:4px;padding:0 2px}
+.star{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;color:var(--muted);transition:color .25s,transform .25s}
+.star svg{width:20px;height:20px}
+.star.on{color:var(--gold)}
+.star.on svg{fill:currentColor}
+.star.burst{animation:burst .45s var(--ease)}
+@keyframes burst{40%{transform:scale(1.45) rotate(-12deg)}}
+.chev{color:var(--muted);width:18px;height:18px;flex:none}
+.ripple{position:absolute;border-radius:50%;background:var(--gold);opacity:.18;transform:scale(0);animation:rip .6s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+.empty{text-align:center;color:var(--muted);padding:60px 20px;animation:up .5s var(--ease) backwards}
+.empty svg{width:48px;height:48px;color:var(--gold);opacity:.7}
+
+/* riel de letras */
+#rail{position:fixed;right:max(4px,calc(50% - 276px));top:50%;transform:translateY(-42%);z-index:9;display:flex;flex-direction:column;
+  align-items:center;padding:8px 4px;border-radius:20px;background:color-mix(in srgb,var(--card) 70%,transparent);touch-action:none;transition:opacity .3s}
+#rail span{font-size:10.5px;font-weight:700;color:var(--muted);line-height:17px;width:22px;text-align:center;transition:color .15s,transform .15s}
+#rail span.hot{color:var(--gold);transform:scale(1.5)}
+#bubble{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%) scale(.6);width:84px;height:84px;border-radius:24px;
+  background:var(--gold);color:#1b1406;font-size:40px;font-weight:800;display:grid;place-items:center;z-index:20;opacity:0;
+  pointer-events:none;transition:opacity .2s,transform .25s var(--ease)}
+#bubble.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* banner instalar */
+#install{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translate(-50%,140%);width:min(528px,calc(100% - 28px));
+  z-index:15;background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center;
+  box-shadow:0 18px 50px rgba(0,0,0,.4);transition:transform .6s var(--ease)}
+#install.on{transform:translate(-50%,0)}
+#install .mini{width:44px;height:44px;border-radius:12px;flex:none;background:radial-gradient(circle at 30% 25%,var(--gold2),var(--gold));display:grid;place-items:center}
+#install .mini svg{width:26px}
+#install p{margin:0;flex:1;font-size:13.5px;line-height:1.35}
+#install p b{display:block;font-size:15px}
+.btn{background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1b1406;font-weight:700;border-radius:11px;padding:10px 14px;font-size:14px;
+  transition:transform .2s,box-shadow .25s}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(232,180,74,.35)}
+.btn:active{transform:scale(.95)}
+
+/* ---------- Vista del himno ---------- */
+#view{position:fixed;inset:0;z-index:30;background:var(--bg);transform:translateX(100%);transition:transform .45s var(--ease);
+  display:flex;flex-direction:column;visibility:hidden}
+#view.on{transform:none;visibility:visible}
+.vbar{display:flex;align-items:center;gap:4px;padding:calc(env(safe-area-inset-top) + 8px) 8px 8px;max-width:560px;width:100%;margin:0 auto}
+.vbar .vt{flex:1;font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 6px;opacity:0;transition:opacity .3s}
+.vbar .vt.on{opacity:1}
+#vscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#progress{height:3px;background:linear-gradient(90deg,var(--gold),var(--gold2));width:0;transition:width .1s}
+.hymn{max-width:560px;margin:0 auto;padding:10px 24px 140px}
+.hymn.anim>*{animation:up .55s var(--ease) backwards}
+.hymn .hn{display:inline-flex;align-items:center;gap:8px;color:var(--gold);font-weight:700;font-size:14px;letter-spacing:1.5px;text-transform:uppercase}
+.hymn .hn i{width:26px;height:2px;background:var(--gold);border-radius:2px}
+.hymn h2{font-size:28px;line-height:1.2;margin:8px 0 6px}
+.hymn .cat{color:var(--muted);font-size:14px;margin-bottom:22px}
+.verse{font-size:var(--fs);line-height:1.65;margin:0 0 22px;position:relative;padding-left:34px;transition:font-size .3s var(--ease)}
+.verse .vn{position:absolute;left:0;top:.15em;width:24px;height:24px;border-radius:8px;background:var(--card);color:var(--muted);font-size:13px;font-weight:700;display:grid;place-items:center}
+.verse.coro{background:var(--goldbg);border-radius:14px;padding:14px 16px 14px 20px;border-left:3px solid var(--gold);font-style:italic}
+.verse.coro .lbl{display:block;font-style:normal;font-size:12px;font-weight:800;color:var(--gold);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.navb{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;gap:6px;align-items:center;
+  background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:6px;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.navb .icon-btn{width:46px;height:46px}
+.navb .fs{display:flex;align-items:center;gap:2px;padding:0 6px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.navb .fs button{width:40px;height:40px;border-radius:10px;font-weight:700}
+.navb .fs button:hover{background:var(--card)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 18px);transform:translate(-50%,calc(-100% - 40px));opacity:0;background:var(--gold);color:#1b1406;
+  padding:10px 16px;border-radius:12px;font-weight:600;font-size:14px;z-index:60;transition:transform .45s var(--ease);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.toast.on{transform:translate(-50%,0);opacity:1}
+.tag{display:inline-block;font-size:11px;font-weight:700;background:var(--card);color:var(--muted);border-radius:6px;padding:3px 7px;margin-left:6px;vertical-align:middle}
+
+/* menú */
+#sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+#sheet.on{opacity:1;visibility:visible}
+#sheet .panel{position:absolute;left:50%;bottom:0;transform:translate(-50%,100%);width:min(560px,100%);background:var(--bg2);border-radius:22px 22px 0 0;
+  padding:10px 18px calc(24px + env(safe-area-inset-bottom));transition:transform .45s var(--ease)}
+#sheet.on .panel{transform:translate(-50%,0)}
+.grab{width:42px;height:5px;border-radius:5px;background:var(--line);margin:4px auto 14px}
+.row{display:flex;align-items:center;gap:14px;width:100%;padding:14px 6px;border-radius:12px;text-align:left;font-size:15.5px;transition:background .2s}
+.row:hover{background:var(--card)}
+.row svg{width:22px;height:22px;color:var(--gold)}
+.row small{margin-left:auto;color:var(--muted)}
+.info{font-size:13px;color:var(--muted);line-height:1.5;padding:10px 6px 0}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .item.rv{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div id="splash">
+  <div class="splash-t">Hinário</div>
+  <div class="splash-s" id="splashS">Preparando os hinos para uso offline…</div>
+  <div class="bar"><i id="barI"></i></div>
+</div>
+
+<div class="app">
+  <header id="hdr">
+    <div class="top">
+      <h1 id="ttl">Hinário</h1>
+      <button class="icon-btn" id="favBtn" aria-label="Favoritos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+      <button class="icon-btn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>
+    </div>
+    <label class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" inputmode="search" placeholder="Buscar por número, título ou letra…" autocomplete="off">
+      <button id="clear" class="icon-btn" style="width:28px;height:28px" aria-label="Limpar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </label>
+    <nav class="tabs" id="tabs">
+      <span class="ind" id="ind"></span>
+      <button data-t="az" class="on">A–Z</button>
+      <button data-t="num">Número</button>
+      <button data-t="fav">Favoritos</button>
+      <button data-t="rec">Recentes</button>
+    </nav>
+  </header>
+  <main id="list"></main>
+</div>
+
+<div id="rail"></div>
+<div id="bubble"></div>
+
+<div id="install">
+  <p id="instTxt"><b>Instale o Hinário</b>Use como aplicativo, mesmo sem internet.</p>
+  <button class="btn" id="instBtn">Instalar</button>
+  <button class="icon-btn" id="instX" style="width:32px;height:32px" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+</div>
+
+<section id="view" aria-hidden="true">
+  <div class="vbar">
+    <button class="icon-btn" id="back" aria-label="Voltar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="vt" id="vt"></div>
+    <button class="icon-btn star" id="vStar" aria-label="Favorito"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg></button>
+    <button class="icon-btn" id="vTheme" aria-label="Tema"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg></button>
+  </div>
+  <div id="progress"></div>
+  <div id="vscroll"><article class="hymn" id="hymn"></article></div>
+  <div class="navb">
+    <button class="icon-btn" id="prev" aria-label="Anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="fs"><button id="fsM" aria-label="Diminuir letra">A−</button><button id="fsP" aria-label="Aumentar letra" style="font-size:18px">A+</button></div>
+    <button class="icon-btn" id="next" aria-label="Próximo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+</section>
+
+<div id="sheet"><div class="panel">
+  <div class="grab"></div>
+  <button class="row" id="mTheme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>Tema claro / escuro<small id="mThemeV"></small></button>
+  <button class="row" id="mRandom"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></svg>Hino aleatório</button>
+  <button class="row" id="mInstall"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Instalar no celular</button>
+  <div class="info">Demo com <b id="cnt"></b> hinos de exemplo (títulos e letras fictícios). Todos ficam salvos no aparelho e funcionam sem internet.</div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   DATOS DE EJEMPLO — en la versión real esto se reemplaza
+   por hinos.json con los cantos reales (número, título, estrofas, coro).
+   ========================================================= */
+const HINOS = (()=>{
+  let s = 7; const r = ()=> (s = (s*16807) % 2147483647) / 2147483647;
+  const pick = a => a[Math.floor(r()*a.length)];
+  const A = ["Glória","Aleluia","Santo","Bendito","Louvor","Graça","Luz","Paz","Amor","Esperança","Vitória","Fé","Alegria","Promessa","Caminho","Refúgio","Cântico","Hosana","Rocha","Fonte"];
+  const B = ["Eterna","Divina","Celestial","Sem Fim","do Céu","de Deus","Bendita","Gloriosa","Sublime","Fiel","Verdadeira","Maravilhosa","Infinita","Santa","da Manhã","do Senhor"];
+  const V = ["Cantai","Louvai","Exaltai","Bendizei","Celebrai","Adorai","Servi","Buscai","Segui","Esperai"];
+  const O = ["ao Senhor","ao Rei dos reis","com alegria","de coração","ao Deus de amor","em todo lugar","nas alturas","com gratidão","ao Criador","para sempre"];
+  const C = ["Vem, Senhor","Ó Deus Fiel","Que Alegria","Sempre Contigo","Eu Quero Ser Teu","Minha Alma Canta","Junto a Ti","Neste Dia","Pela Fé","Rumo ao Céu","Unidos em Amor","Obrigado, Senhor","Grande é o Senhor","Meu Refúgio","Doce Paz","Teu Nome é Santo","Quão Bom é Estar","Hoje é Dia de Louvor","Ao Romper da Aurora","Sob Tuas Asas","Nas Tuas Mãos","Firme Estarei","Brilha a Luz","Como Te Amo","Quero Te Louvar","Coroai o Rei","Nova Canção","Dia de Festa","Desperta, Ó Povo","Venha a Nós"];
+  const L = ["Com alegria quero cantar","ao Deus que me deu nova vida","sua bondade não tem fim","e sua luz me guia aqui","Levantai as vozes ao céu","toda a terra o louvará","em seu nome há salvação","meu coração descansa em paz","Quando a noite vem chegar","não temerei, pois estás comigo","tua palavra é meu farol","e o teu amor me sustentará","Unidos como um só povo","seguiremos teu caminho","com fé e esperança viva","até o dia de te ver","Nos montes e nos vales","ressoa o teu louvor","as aves cantam tua glória","e o mar proclama o teu poder","Obrigado por teu cuidado","por cada dia que me dás","por tua graça renovada","por teu perdão e tua paz","Eu quero sempre te seguir","e em tua casa habitar","teu nome santo bendizer","e tua glória contemplar"];
+  const CO = ["Glória, glória ao Senhor","Aleluia, aleluia","Santo, santo é o Senhor","Cantemos com fervor","Hosana nas alturas","Bendito seja o seu nome","para sempre o louvarei","eternamente cantarei"];
+  const cats = ["Louvor","Adoração","Gratidão","Esperança","Comunhão","Consagração","Santa Ceia","Aniversário","Batismo","Oração"];
+  const verse = n => Array.from({length:n},(_,i)=>{const l=pick(L);return i? l[0].toLowerCase()+l.slice(1) : l}).join("\n");
+  const set = new Set();
+  while(set.size < 10){
+    const k = r(); let t;
+    if(k<.3) t = pick(A)+" "+pick(B);
+    else if(k<.6) t = pick(V)+" "+pick(O);
+    else t = pick(C) + (r()<.5 ? "" : " ("+pick(A)+")");
+    set.add(t);
+  }
+  return [...set].map((t,i)=>({
+    n:i+1, t, cat:pick(cats),
+    est:Array.from({length:2+Math.floor(r()*2)},()=>verse(4)),
+    coro: r()<.8 ? [pick(CO),pick(L),pick(CO),pick(L)].join("\n") : null
+  }));
+})();
+
+/* ---------- estado ---------- */
+const store = {
+  get(k,d){ try{ const v = localStorage.getItem("hin_"+k); return v? JSON.parse(v):d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem("hin_"+k, JSON.stringify(v)) }catch(e){} }
+};
+let favs = new Set(store.get("favs",[])), recs = store.get("recs",[]), fs = store.get("fs",19), tab="az", cur=null;
+const $ = id => document.getElementById(id);
+const norm = s => s.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+const key = h => norm(h.t.replace(/^[¡¿(“"'Ó ]+/,"")) ;
+const first = h => key(h)[0].toUpperCase();
+document.documentElement.dataset.theme = store.get("theme","dark");
+document.documentElement.style.setProperty("--fs", fs+"px");
+$("cnt").textContent = HINOS.length;
+
+const starSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z"/></svg>';
+const chev = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>';
+const esc = s => s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function hl(text,q){
+  if(!q) return esc(text);
+  const n = norm(text), i = n.indexOf(q);
+  if(i<0) return esc(text);
+  return esc(text.slice(0,i))+"<mark>"+esc(text.slice(i,i+q.length))+"</mark>"+esc(text.slice(i+q.length));
+}
+
+/* ---------- lista ---------- */
+let io;
+function render(){
+  const raw = $("q").value.trim(), q = norm(raw);
+  $("clear").classList.toggle("on", !!raw);
+  let items = HINOS, lyricHit = {};
+  if(tab==="fav") items = HINOS.filter(h=>favs.has(h.n));
+  if(tab==="rec") items = recs.map(n=>HINOS[n-1]).filter(Boolean);
+  if(q){
+    items = items.filter(h=>{
+      if(String(h.n).startsWith(q) || norm(h.t).includes(q)) return true;
+      const line = [...h.est, h.coro||""].join("\n").split("\n").find(l=>norm(l).includes(q));
+      if(line){ lyricHit[h.n]=line; return true } return false;
+    });
+    items.sort((a,b)=>(a.n in lyricHit)-(b.n in lyricHit) || a.n-b.n);
+  }
+  if(tab==="az" && !q) items = [...items].sort((a,b)=>key(a).localeCompare(key(b)));
+  const groups = tab==="az" && !q;
+  const list = $("list"); let html="", last="";
+  if(!items.length){
+    const msg = tab==="fav"&&!q ? "Toque na ⭐ de um hino para salvá-lo aqui." : tab==="rec"&&!q ? "Os hinos que você abrir aparecerão aqui." : "Nenhum hino encontrado para “"+esc(raw)+"”.";
+    list.innerHTML = '<div class="empty">'+starSvg.replace('<svg','<svg')+'<p>'+msg+'</p></div>';
+  } else {
+    for(const h of items){
+      if(groups){ const L = first(h); if(L!==last){ html += '<div class="sec" id="L-'+L+'"><b>'+L+'</b></div>'; last=L } }
+      const lh = lyricHit[h.n], li = lh ? Math.max(0, norm(lh).indexOf(q)-12) : 0;
+      const sub = lh ? "“"+(li?"…":"")+hl(lh.slice(li),q)+"”" : esc(h.cat);
+      html += '<button class="item rv" data-n="'+h.n+'"><span class="num">'+h.n+'</span><span class="meta"><div class="t">'+hl(h.t,q)+'</div><div class="s">'+sub+'</div></span>'+
+              '<span class="star'+(favs.has(h.n)?" on":"")+'" data-star="'+h.n+'">'+starSvg+'</span>'+chev+'</button>';
+    }
+    list.innerHTML = html;
+  }
+  $("rail").style.opacity = groups ? 1 : 0;
+  $("rail").style.pointerEvents = groups ? "auto" : "none";
+  // scroll reveal escalonado
+  io && io.disconnect();
+  let batch = 0;
+  io = new IntersectionObserver(es=>{
+    batch = 0;
+    es.forEach(e=>{ if(e.isIntersecting){ const el=e.target; el.style.transitionDelay = Math.min(batch++,8)*40+"ms"; el.classList.add("in"); io.unobserve(el);
+      setTimeout(()=>el.style.transitionDelay="",700) } });
+  },{rootMargin:"0px 0px -20px 0px"});
+  list.querySelectorAll(".item").forEach(el=>io.observe(el));
+}
+
+$("list").addEventListener("click",e=>{
+  const st = e.target.closest("[data-star]");
+  if(st){ e.stopPropagation(); toggleFav(+st.dataset.star, st); return }
+  const it = e.target.closest(".item"); if(!it) return;
+  const r = it.getBoundingClientRect(), d = Math.max(r.width,r.height), sp = document.createElement("span");
+  sp.className="ripple"; sp.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;
+  it.appendChild(sp); setTimeout(()=>sp.remove(),600);
+  setTimeout(()=>openHymn(+it.dataset.n),120);
+});
+
+function toggleFav(n, el){
+  favs.has(n) ? favs.delete(n) : favs.add(n);
+  store.set("favs",[...favs]);
+  const on = favs.has(n);
+  document.querySelectorAll('[data-star="'+n+'"]').forEach(s=>{ s.classList.toggle("on",on); s.classList.remove("burst"); void s.offsetWidth; s.classList.add("burst") });
+  if(cur===n){ $("vStar").classList.toggle("on",on); $("vStar").classList.remove("burst"); void $("vStar").offsetWidth; $("vStar").classList.add("burst") }
+  toast(on? "Adicionado aos favoritos" : "Removido dos favoritos");
+  if(tab==="fav" && !on && !cur) render();
+}
+
+/* tabs con indicador */
+function moveInd(){ const b = $("tabs").querySelector(".on"); $("ind").style.width = b.offsetWidth+"px"; $("ind").style.transform = "translateX("+(b.offsetLeft-4)+"px)" }
+$("tabs").addEventListener("click",e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  $("tabs").querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+  tab = b.dataset.t; moveInd(); render(); window.scrollTo({top:0,behavior:"smooth"});
+});
+$("favBtn").onclick = ()=> $("tabs").querySelector('[data-t="fav"]').click();
+addEventListener("resize",moveInd);
+
+/* búsqueda */
+let tmr; $("q").addEventListener("input",()=>{ clearTimeout(tmr); tmr=setTimeout(render,120) });
+$("clear").onclick = e=>{ e.preventDefault(); $("q").value=""; render(); $("q").focus() };
+
+/* header que se achica */
+addEventListener("scroll",()=> $("hdr").classList.toggle("small", scrollY>20), {passive:true});
+
+/* riel de letras con arrastre */
+const LETTERS = [...new Set(HINOS.map(first))].sort();
+$("rail").innerHTML = LETTERS.map(l=>'<span data-l="'+l+'">'+l+'</span>').join("");
+let railOn=false;
+function railAt(y){
+  const spans=[...$("rail").children]; let hit=null;
+  for(const s of spans){ const r=s.getBoundingClientRect(); if(y>=r.top-2 && y<=r.bottom+2){ hit=s; break } }
+  if(!hit) return;
+  spans.forEach(s=>s.classList.toggle("hot",s===hit));
+  const L = hit.dataset.l, sec = $("L-"+L);
+  $("bubble").textContent=L; $("bubble").classList.add("on");
+  if(sec){ const top = sec.getBoundingClientRect().top + scrollY - $("hdr").offsetHeight - 4; scrollTo({top}) }
+  if(navigator.vibrate) navigator.vibrate(5);
+}
+$("rail").addEventListener("pointerdown",e=>{ railOn=true; $("rail").setPointerCapture(e.pointerId); railAt(e.clientY) });
+$("rail").addEventListener("pointermove",e=>{ if(railOn) railAt(e.clientY) });
+let railT;
+const railHide=()=>{ $("bubble").classList.remove("on"); [...$("rail").children].forEach(s=>s.classList.remove("hot")) };
+const railEnd=()=>{ railOn=false; clearTimeout(railT); railT=setTimeout(railHide,250) };
+// En celular el navegador a veces no envía "pointerup": se escuchan todos los finales posibles
+["pointerup","pointercancel","lostpointercapture"].forEach(ev=>$("rail").addEventListener(ev,railEnd));
+["pointerup","touchend","touchcancel"].forEach(ev=>addEventListener(ev,()=>{ if(railOn||$("bubble").classList.contains("on")) railEnd() },{passive:true}));
+// Seguro extra: si no hay movimiento en 1 s, se oculta igual
+$("rail").addEventListener("pointermove",()=>{ if(railOn){ clearTimeout(railT); railT=setTimeout(railHide,1000) } });
+$("rail").addEventListener("pointerdown",()=>{ clearTimeout(railT); railT=setTimeout(railHide,1000) });
+
+/* ---------- vista del himno ---------- */
+function openHymn(n, dir){
+  const h = HINOS[n-1]; if(!h) return; cur = n;
+  recs = [n, ...recs.filter(x=>x!==n)].slice(0,30); store.set("recs",recs);
+  let html = '<div class="hn"><i></i>Hino '+h.n+'</div><h2>'+esc(h.t)+'</h2><div class="cat">'+esc(h.cat)+'<span class="tag">Exemplo</span></div>';
+  h.est.forEach((v,i)=>{
+    html += '<p class="verse"><span class="vn">'+(i+1)+'</span>'+esc(v).replace(/\n/g,"<br>")+'</p>';
+    if(h.coro && i===0) html += '<p class="verse coro"><span class="lbl">Coro</span>'+esc(h.coro).replace(/\n/g,"<br>")+'</p>';
+  });
+  const el = $("hymn"); el.innerHTML = html;
+  el.classList.remove("anim"); void el.offsetWidth; el.classList.add("anim");
+  [...el.children].forEach((c,i)=>c.style.animationDelay = (i*60)+"ms");
+  if(dir){ el.animate([{transform:`translateX(${dir*40}px)`,opacity:0},{transform:"none",opacity:1}],{duration:380,easing:"cubic-bezier(.22,.9,.3,1)"}) }
+  $("vt").textContent = h.n+". "+h.t;
+  $("vStar").classList.toggle("on", favs.has(n));
+  $("vscroll").scrollTop = 0; onVScroll();
+  if(!$("view").classList.contains("on")){ $("view").classList.add("on"); $("view").setAttribute("aria-hidden","false"); history.pushState({h:n},"") }
+}
+function closeHymn(){ $("view").classList.remove("on"); $("view").setAttribute("aria-hidden","true"); cur=null; if(tab==="rec"||tab==="fav") render() }
+$("back").onclick = ()=> history.state && history.state.h ? history.back() : closeHymn();
+addEventListener("popstate",()=>{ if($("view").classList.contains("on")) closeHymn() });
+$("prev").onclick = ()=> cur>1 && openHymn(cur-1,-1);
+$("next").onclick = ()=> cur<HINOS.length && openHymn(cur+1,1);
+$("vStar").onclick = ()=> toggleFav(cur);
+function setFs(v){ fs=Math.max(15,Math.min(32,v)); document.documentElement.style.setProperty("--fs",fs+"px"); store.set("fs",fs) }
+$("fsM").onclick=()=>setFs(fs-2); $("fsP").onclick=()=>setFs(fs+2);
+function onVScroll(){
+  const s=$("vscroll"), p = s.scrollTop/((s.scrollHeight-s.clientHeight)||1);
+  $("progress").style.width = (p*100)+"%"; $("vt").classList.toggle("on", s.scrollTop>70);
+}
+$("vscroll").addEventListener("scroll",onVScroll,{passive:true});
+// swipe entre himnos
+let sx=0, sy=0;
+$("vscroll").addEventListener("touchstart",e=>{ sx=e.touches[0].clientX; sy=e.touches[0].clientY },{passive:true});
+$("vscroll").addEventListener("touchend",e=>{
+  const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+  if(Math.abs(dx)>70 && Math.abs(dx)>Math.abs(dy)*1.5) dx<0 ? $("next").click() : $("prev").click();
+});
+addEventListener("keydown",e=>{ if(!cur) return; if(e.key==="ArrowRight") $("next").click(); if(e.key==="ArrowLeft") $("prev").click(); if(e.key==="Escape") $("back").click() });
+
+/* tema */
+function toggleTheme(){
+  const t = document.documentElement.dataset.theme==="dark" ? "light":"dark";
+  document.documentElement.dataset.theme=t; store.set("theme",t);
+  document.querySelector('meta[name="theme-color"]').content = t==="dark" ? "#121726" : "#f6f3ec";
+  $("mThemeV").textContent = t==="dark"?"Escuro":"Claro";
+}
+$("vTheme").onclick = toggleTheme;
+
+/* menú */
+$("menuBtn").onclick = ()=>{ $("mThemeV").textContent = document.documentElement.dataset.theme==="dark"?"Escuro":"Claro"; $("sheet").classList.add("on") };
+$("sheet").onclick = e=>{ if(e.target.id==="sheet") $("sheet").classList.remove("on") };
+$("mTheme").onclick = toggleTheme;
+$("mRandom").onclick = ()=>{ $("sheet").classList.remove("on"); openHymn(1+Math.floor(Math.random()*HINOS.length)) };
+$("mInstall").onclick = ()=>{ $("sheet").classList.remove("on"); showInstall(true) };
+
+let tt; function toast(m){ $("toast").textContent=m; $("toast").classList.add("on"); clearTimeout(tt); tt=setTimeout(()=>$("toast").classList.remove("on"),1600) }
+
+/* ---------- instalar como app (PWA) ---------- */
+let deferred=null;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; if(!store.get("instX",false)) setTimeout(()=>showInstall(),2500) });
+function showInstall(force){
+  if(standalone){ toast("O Hinário já está instalado ✓"); return }
+  if(isIOS){ $("instTxt").innerHTML='<b>Instale no iPhone</b>Toque em Compartilhar <span style="color:var(--gold)">⬆︎</span> e depois em “Adicionar à Tela de Início”.'; $("instBtn").style.display="none" }
+  else if(!deferred){ $("instTxt").innerHTML='<b>Instale o Hinário</b>No menu do navegador (⋮), toque em “Instalar app” ou “Adicionar à tela inicial”.'; $("instBtn").style.display="none" }
+  $("install").classList.add("on");
+}
+$("instBtn").onclick = async ()=>{ if(!deferred) return; deferred.prompt(); await deferred.userChoice; deferred=null; $("install").classList.remove("on") };
+$("instX").onclick = ()=>{ $("install").classList.remove("on"); store.set("instX",true) };
+if(isIOS && !standalone && !store.get("instX",false)) setTimeout(()=>showInstall(),3000);
+
+// Service worker: guarda todo en el teléfono para que funcione sin internet
+if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){ navigator.serviceWorker.register("sw.js").catch(()=>{}) }
+
+/* ---------- splash: simula la primera descarga ---------- */
+(function boot(){
+  const first = !store.get("ready",false);
+  let p=0; const step = first ? 3.2 : 25;
+  const iv = setInterval(()=>{
+    p=Math.min(100,p+step*(0.6+Math.random()));
+    $("barI").style.width=p+"%";
+    $("splashS").textContent = first ? `Baixando hinos para uso offline… ${Math.round(p/100*HINOS.length)}/${HINOS.length}` : "Carregando…";
+    if(p>=100){ clearInterval(iv); store.set("ready",true); if(first) $("splashS").textContent="Pronto! Disponível sem internet ✓";
+      setTimeout(()=>{ $("splash").classList.add("hide"); render(); moveInd() }, first?600:150) }
+  }, 40);
+})();
+</script>
+</body>
+</html>
