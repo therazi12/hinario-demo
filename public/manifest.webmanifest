@@ -1,12 +1,12 @@
 {
-  "name": "Hinário",
+  "name": "Hinário A Luz do Mundo",
   "short_name": "Hinário",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#121726",
-  "theme_color": "#121726",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "lang": "pt-BR",
   "icons": [
     {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
