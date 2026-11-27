@@ -300,7 +300,7 @@ function applyTheme(t){
   document.documentElement.dataset.theme=t;
   document.querySelector('meta[name="theme-color"]').content = t==="dark" ? "#121726" : "#ffffff";
 }
-applyTheme(store.get("theme","light"));
+applyTheme("light"); // siempre abre en claro (blanco y dorado)
 document.documentElement.style.setProperty("--fs", fs+"px");
 $("cnt").textContent = HINOS.length;
 
@@ -495,7 +495,7 @@ addEventListener("keydown",e=>{ if(cur===null) return; if(e.key==="ArrowRight") 
 /* tema */
 function toggleTheme(){
   const t = document.documentElement.dataset.theme==="dark" ? "light":"dark";
-  applyTheme(t); store.set("theme",t);
+  applyTheme(t);
   $("mThemeV").textContent = t==="dark"?"Escuro":"Claro";
 }
 $("vTheme").onclick = toggleTheme;
